@@ -1,0 +1,177 @@
+------------------------------- SPARQL QUERIES ---------------------------------
+
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX TR: <http://www.semanticweb.org/aritz/ontologies/2023/10/costumerHabits#>
+
+---------------------------------- QUERY 1 -------------------------------------
+Retrieve all the items (the names) bougth by the customer with id = '1111'.
+
+SELECT ?itemName WHERE {
+  ?customer rdf:type TR:Customer.
+  ?item rdf:type TR:Item.
+  ?item TR:Size ?Size;
+	TR:Item ?itemName.
+  ?customer TR:Age ?age.
+  ?customer TR:hasBought ?item.
+ 
+  FILTER REGEX (str(?customer), "[1]{4}")
+}
+
+---------------------------------- QUERY 2 -------------------------------------
+Retrieve the number of items sold in each season.
+
+SELECT ?seasonName (COUNT(?item) AS ?howManyItemsSold) WHERE {
+    ?item rdf:type TR:Item.
+    ?season rdf:type TR:Season;
+            TR:Season ?seasonName.
+    ?item TR:Category ?category.
+    ?item TR:payedWhen ?season.
+    
+}
+GROUP BY ?seasonName
+
+---------------------------------- QUERY 3 -------------------------------------
+Return the ten most different expensive items.
+
+SELECT DISTINCT ?itemName ?amount WHERE {
+    ?item rdf:type TR:Item.
+    ?price rdf:type TR:Price.
+    ?item TR:Category ?category;
+          TR:hasCosted ?price;
+          TR:Item ?itemName.
+    ?price TR:Price ?amount.
+}
+ORDER BY DESC(?amount)
+LIMIT 10
+
+---------------------------------- QUERY 4 -------------------------------------
+Retrieve the amount of item size L.
+
+SELECT (COUNT(?Size) AS ?howManyL) WHERE {
+  ?customer rdf:type TR:Customer.
+  ?item rdf:type TR:Item.
+  ?item TR:Size ?Size.
+  ?customer TR:hasBought ?item.
+    
+  FILTER (?Size = 'L' )
+}
+
+---------------------------------- QUERY 5 -------------------------------------
+Retrieve the maximun and minimun rating given to item 'Sneakers' bought by the costumers.
+
+SELECT (MAX(?rating) AS ?maxRating) (MIN(?rating) AS ?minRating) WHERE {
+  ?customer rdf:type TR:Customer.
+  ?item rdf:type TR:Item.
+  ?item TR:Item ?itemName.
+  ?customer TR:Review_Rating ?rating.
+  ?customer TR:hasBought ?item.
+    
+  FILTER (?itemName = 'Sneakers' )
+}
+
+---------------------------------- QUERY 6 -------------------------------------
+Return three customers that used PayPal.
+
+SELECT ?customer WHERE {
+  ?customer rdf:type TR:Customer.
+  ?item rdf:type TR:Item.
+  ?price rdf:type TR:Price.
+  ?payment rdf:type TR:Payment.
+  ?customer TR:hasBought ?item.
+  ?item TR:hasCosted ?price.
+  ?price TR:payedBy ?payment.
+  ?payment TR:Payment_Method ?method.
+    
+  FILTER (?method = 'PayPal')
+}
+LIMIT 5
+
+---------------------------------- QUERY 7 -------------------------------------
+Return the ten customers that bought the most expesive Pants, return their colors too.
+
+SELECT DISTINCT ?customer ?color WHERE {
+  ?customer rdf:type TR:Customer.
+  ?item rdf:type TR:Item.
+  ?price rdf:type TR:Price.
+  ?payment rdf:type TR:Payment.
+  ?customer TR:hasBought ?item.
+  ?item TR:hasCosted ?price;
+        TR:Item ?itemName;
+        TR:Color ?color.
+    
+  FILTER (?itemName = 'Pants')
+}
+ORDER BY DESC(?price)
+LIMIT 10
+
+---------------------------------- QUERY 8 -------------------------------------
+Are the outerwear more expensive than footwear?
+
+ASK WHERE{
+    {
+        SELECT (AVG(?value) AS ?averageFootwearPrice) WHERE {
+          ?customer rdf:type TR:Customer.
+          ?item rdf:type TR:Item.
+          ?price rdf:type TR:Price.
+          ?item TR:Category ?category.
+          ?customer TR:hasBought ?item.
+          ?item TR:hasCosted ?price.
+          ?price TR:Price ?value.
+
+          FILTER (?category = 'Footwear' )
+        }
+    }
+    {
+        SELECT (AVG(?value) AS ?averageOuterwearPrice) WHERE {
+          ?customer rdf:type TR:Customer.
+          ?item rdf:type TR:Item.
+          ?price rdf:type TR:Price.
+          ?item TR:Category ?category.
+          ?customer TR:hasBought ?item.
+          ?item TR:hasCosted ?price.
+          ?price TR:Price ?value.
+
+          FILTER (?category = 'Outerwear' )
+        }
+    } FILTER (?averageFootwearPrice < ?averageOuterwearPrice)
+}
+
+---------------------------------- QUERY 9 -------------------------------------
+Get the online shop's filter name used by the customer with id = '2211'. The filter name is made with the Item's name and it's Category.
+
+SELECT ?filterName WHERE {
+  ?customer rdf:type TR:Customer.
+  ?item rdf:type TR:Item.
+  ?item TR:Size ?Size;
+	TR:Item ?itemName;
+    TR:Category ?category.
+  ?customer TR:Age ?age.
+  ?customer TR:hasBought ?item.
+  BIND(CONCAT(?category, " / ", ?itemName) AS ?filterName)
+ 
+  FILTER REGEX (str(?customer), "[2]{2}[1]{2}")
+}
+
+---------------------------------- QUERY 10 ------------------------------------
+For every category, return the size, color and shipping type of the cheapest item.
+
+SELECT ?category ?itemName ?cheapestPrice ?size ?color ?method WHERE {
+	?item2 rdf:type TR:Item.
+    ?item2 TR:Item ?itemName;
+           TR:Category ?category;
+           TR:Size ?size;	
+           TR:Color ?color;
+           TR:Shipping_Method ?method.
+    ?price rdf:type TR:Price;
+           TR:Price ?value2.
+    {
+        SELECT (MIN(?value) AS ?cheapestPrice) WHERE {
+            ?item rdf:type TR:Item.
+            ?price rdf:type TR:Price.
+            ?item TR:hasCosted ?price.
+            ?price TR:Price ?value.
+        }
+    } FILTER (?value2 = ?cheapestPrice)
+}
+GROUP BY ?category ?itemName ?cheapestPrice ?size ?color ?method
+LIMIT 10
